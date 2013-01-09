@@ -7,7 +7,6 @@ SOURCES += \
     demowidget2.cpp
 
 HEADERS += \
-    widget.h \
     demowidget1.h \
     demowidget2.h
 

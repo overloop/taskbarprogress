@@ -7,6 +7,9 @@ namespace Ui {
 	class DemoWidget2;
 }
 
+/**
+ * @brief The DemoWidget2 class shows how to use QTasksyncedProgressBar
+ */
 class DemoWidget2 : public QWidget
 {
 	Q_OBJECT

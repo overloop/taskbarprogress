@@ -23,6 +23,7 @@
  */
 
 #include <QtGlobal>
+#include <QWidget>
 #include "qtaskbarprogress.h"
 
 #ifdef Q_OS_WIN
