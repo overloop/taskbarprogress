@@ -22,53 +22,85 @@
  * THE SOFTWARE.
  */
 
+#include <QtGlobal>
 #include "qtaskbarprogress.h"
+
+#ifdef Q_OS_WIN
+#include "qtaskbarlist3.h"
+#endif
 
 //-----------------------------------------------------------------------------
 // QTaskbarProgress
 //-----------------------------------------------------------------------------
 
 QTaskbarProgress::QTaskbarProgress(QWidget *parent) :
-	QObject(parent), m_state(TBPF_NOPROGRESS), m_min(0), m_max(0), m_value(-1)
+    QObject(parent), m_state(TBPF_NOPROGRESS), m_min(0), m_max(100), m_value(-1)
 {
 
 }
 
 QTaskbarProgress::~QTaskbarProgress()
 {
+
 }
 
 void QTaskbarProgress::reset()
 {
+#ifdef Q_OS_WIN
+	QTaskbarList3::instance()->setProgressState(
+		reinterpret_cast<QWidget *>(parent()), TBPF_NOPROGRESS);
 
+	m_value = m_min - 1;
+	if (m_min == INT_MIN)
+		m_value = INT_MIN;
+#endif
 }
 
 void QTaskbarProgress::setMaximum(int maximum)
 {
-
+    setRange(qMin(m_min, maximum), maximum); 
 }
 
 void QTaskbarProgress::setMinimum(int minimum)
 {
-
+    setRange(minimum, qMax(m_max, minimum)); 
 }
 
 void QTaskbarProgress::setRange(int minimum, int maximum)
 {
-
+	m_min = minimum;
+	m_max = qMax(minimum, maximum);
+	if (m_value < (m_min - 1) || m_value > m_max)
+		reset();
 }
 
 void QTaskbarProgress::setValue(int value)
 {
+	if (m_value == value ||
+		((value > m_max || value < m_min) &&
+			(m_max != 0 || m_min != 0)))
+		return;
+	m_value = value;
+	emit valueChanged(value);
 
+	update(); 
 }
 
 void QTaskbarProgress::update()
 {
-
+#ifdef Q_OS_WIN
+	QTaskbarList3::instance()->setProgressValue(
+		reinterpret_cast<QWidget *>(parent()), m_value - m_min, m_max - m_min + 1);
+#endif
 }
 
 void QTaskbarProgress::setState(TBPFLAG state)
 {
-
+#ifdef Q_OS_WIN
+	m_state = state;
+	QTaskbarList3::instance()->setProgressState(
+		reinterpret_cast<QWidget *>(parent()), m_state);
+#else
+    Q_UNUSED(state)
+#endif
 }

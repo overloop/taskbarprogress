@@ -1,21 +1,16 @@
 #include <QApplication>
 
-#ifdef Q_OS_WIN32
-#include "objbase.h"
-#endif
-
-#include "widget.h"
+#include "demowidget1.h"
+#include "demowidget2.h"
 
 int main(int argc, char** argv)
 {
     QApplication app(argc,argv);
 
-#ifdef Q_OS_WIN32
-    CoInitialize(NULL);
-#endif
-
-    Widget widget;
-    widget.show();
+    DemoWidget1 widget1;
+    widget1.show();
+    DemoWidget2 widget2;
+    widget2.show();
 
     return app.exec();
 }

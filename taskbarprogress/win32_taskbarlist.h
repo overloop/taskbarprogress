@@ -16,8 +16,8 @@ typedef struct THUMBBUTTON *LPTHUMBBUTTON;
 
 static const CLSID CLSID_TaskbarList = {0x56FDF344,0xFD6D,0x11d0,{0x95,0x8A,0x00,0x60,0x97,0xC9,0xA0,0x90}};
 
-EXTERN_C const IID IID_ITaskbarList;
-EXTERN_C const IID IID_ITaskbarList2;
+//EXTERN_C const IID IID_ITaskbarList;
+//EXTERN_C const IID IID_ITaskbarList2;
 //EXTERN_C const IID IID_ITaskbarList3;
 
 static const IID IID_ITaskbarList3 = {0xea1afb91,0x9e28,0x4b86,{0x90,0xe9,0x9e,0x9f,0x8a,0x5e,0xef,0xaf}};

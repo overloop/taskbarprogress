@@ -3,10 +3,22 @@ include (taskbarprogress/taskbarprogress.pri)
 
 SOURCES += \
     main.cpp \
-    widget.cpp
+    demowidget1.cpp \
+    demowidget2.cpp
 
 HEADERS += \
-    widget.h
+    widget.h \
+    demowidget1.h \
+    demowidget2.h
 
 FORMS += \
-    widget.ui
+    demowidget1.ui \
+    demowidget2.ui
+
+TARGET = qtaskbarprogress
+
+#vista
+#DEFINES += WINVER=0x600
+#xp
+#DEFINES += WINVER=0x501
+

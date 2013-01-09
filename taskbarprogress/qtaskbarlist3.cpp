@@ -24,7 +24,6 @@
 
 #include "qtaskbarlist3.h"
 #include "win32_changewindowmessagefilter.h"
-#include "win32_iidppvargshelper.h"
 #include <QDebug>
 
 //-----------------------------------------------------------------------------
@@ -36,17 +35,22 @@ QTaskbarList3 *QTaskbarList3::m_instance = NULL;
 QTaskbarList3::QTaskbarList3() :
 	QWidget(NULL, Qt::Window), m_pTaskbarList(NULL)
 {
+    CoInitialize(0);
+
 	// Register "TaskbarButtonCreated" message
 	wm_TaskbarButtonCreated = RegisterWindowMessage(L"TaskbarButtonCreated");
 	// In case the application is run elevated, allow the
 	// TaskbarButtonCreated message through.
-    ChangeWindowMessageFilter(wm_TaskbarButtonCreated, MSGFLT_ADD);
 
+#if (WINVER >= 0x600)
+    ChangeWindowMessageFilter(wm_TaskbarButtonCreated, MSGFLT_ADD);
+#endif
 	// Foreced create hidden window
 	winId();
 
 	// Get ITaskbarList3 interface
 	getInterface();
+
 }
 
 QTaskbarList3 * QTaskbarList3::instance()
@@ -63,6 +67,8 @@ QTaskbarList3::~QTaskbarList3()
 		m_pTaskbarList->Release();
 
 	m_instance = NULL;
+
+    CoUninitialize();
 }
 
 bool QTaskbarList3::winEvent(MSG *message, long *result)
@@ -79,7 +85,7 @@ void QTaskbarList3::getInterface()
 {
 	if (!m_pTaskbarList)
 	{
-        HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_ITaskbarList3, IID_PPV_ARGS_Helper(&m_pTaskbarList));
+        HRESULT hr = CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_ITaskbarList3,(LPVOID*) &m_pTaskbarList);
 		if (SUCCEEDED(hr))
 		{
 			hr = m_pTaskbarList->HrInit();
@@ -88,28 +94,64 @@ void QTaskbarList3::getInterface()
 				m_pTaskbarList->Release();
 				m_pTaskbarList = NULL;
 			}
-        } else if ( hr == REGDB_E_CLASSNOTREG ) {
-            qDebug() << "A specified class (TaskbarList) is not registered in the registration database.";
-        } else if ( hr == CLASS_E_NOAGGREGATION ) {
-            qDebug() << "This class cannot be created as part of an aggregate.";
-        } else if ( hr == E_NOINTERFACE ) {
-            qDebug() << "The specified class does not implement the requested interface, or the controlling IUnknown does not expose the requested interface.";
-        } else if ( hr == E_POINTER ) {
-            qDebug() << "The ppv parameter is NULL.";
+        } else {
+            switch (hr)
+            {
+            case REGDB_E_CLASSNOTREG:
+                qDebug() << "A specified class (TaskbarList) is not registered in the registration database.";
+                break;
+            case CLASS_E_NOAGGREGATION:
+                qDebug() << "This class cannot be created as part of an aggregate.";
+                break;
+            case E_NOINTERFACE:
+                qDebug() << "The specified class does not implement the requested interface, or the controlling IUnknown does not expose the requested interface.";
+                break;
+            case E_POINTER:
+                qDebug() << "The ppv parameter is NULL.";
+                break;
+            }
+            m_pTaskbarList = 0;
         }
 	}
 }
 
+//qt-creator-2.6.1-src\src\plugins\coreplugin\progressmanager\progressmanager_win.cpp
+#if QT_VERSION >= 0x050000
+Q_GUI_EXPORT HICON qt_pixmapToWinHICON(const QPixmap &p);
+
+static inline QWindow *windowOfWidget(const QWidget *widget)
+{
+    if (QWindow *window = widget->windowHandle())
+        return window;
+    if (QWidget *topLevel = widget->nativeParentWidget())
+        return topLevel->windowHandle();
+    return 0;
+}
+
+static inline HWND hwndOfWidget(const QWidget *w)
+{
+    void *result = 0;
+    if (QWindow *window = windowOfWidget(w))
+        result = QGuiApplication::platformNativeInterface()->nativeResourceForWindow("handle", window);
+    return static_cast<HWND>(result);
+}
+#else
+static inline HWND hwndOfWidget(const QWidget *w)
+{
+    return w->winId();
+}
+#endif
+
 HRESULT QTaskbarList3::setProgressState(QWidget *widget, TBPFLAG tbpFlags) const
 {
 	return m_pTaskbarList ?
-		m_pTaskbarList->SetProgressState(widget->winId(), tbpFlags) : E_NOTIMPL;
+        m_pTaskbarList->SetProgressState(hwndOfWidget(widget), tbpFlags) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::setProgressValue(QWidget *widget, quint64 ullCompleted, quint64 ullTotal) const
 {
 	return m_pTaskbarList ?
-		m_pTaskbarList->SetProgressValue(widget->winId(), ullCompleted, ullTotal) : E_NOTIMPL;
+        m_pTaskbarList->SetProgressValue(hwndOfWidget(widget), ullCompleted, ullTotal) : E_NOTIMPL;
 }
 
 #if QT_VERSION < 0x040600
@@ -157,7 +199,7 @@ HRESULT QTaskbarList3::setOverlayIcon(QWidget *widget,
 #else
 		HICON icon = createIcon(overlay);
 #endif
-        HRESULT ret = m_pTaskbarList->SetOverlayIcon(widget->winId(), icon, reinterpret_cast<LPCWSTR>(alt.utf16()));
+        HRESULT ret = m_pTaskbarList->SetOverlayIcon(hwndOfWidget(widget), icon, reinterpret_cast<LPCWSTR>(alt.utf16()));
 		DestroyIcon(icon);
 		return ret;
 	}
@@ -168,47 +210,47 @@ HRESULT QTaskbarList3::setOverlayIcon(QWidget *widget,
 		HICON icon, const QString &alt)
 {
 	return m_pTaskbarList ?
-        m_pTaskbarList->SetOverlayIcon(widget->winId(), icon, reinterpret_cast<LPCWSTR>(alt.utf16())) : E_NOTIMPL;
+        m_pTaskbarList->SetOverlayIcon(hwndOfWidget(widget), icon, reinterpret_cast<LPCWSTR>(alt.utf16())) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::addTab(QWidget *widget)
 {
 	return (m_pTaskbarList && widget) ?
-		m_pTaskbarList->AddTab(widget->winId()) : E_NOTIMPL;
+        m_pTaskbarList->AddTab(hwndOfWidget(widget)) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::deleteTab(QWidget *widget)
 {
 	return (m_pTaskbarList && widget) ?
-		m_pTaskbarList->DeleteTab(widget->winId()) : E_NOTIMPL;
+        m_pTaskbarList->DeleteTab(hwndOfWidget(widget)) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::activateTab(QWidget *widget)
 {
 	return (m_pTaskbarList && widget) ?
-		m_pTaskbarList->ActivateTab(widget->winId()) : E_NOTIMPL;
+        m_pTaskbarList->ActivateTab(hwndOfWidget(widget)) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::setActiveAlt(QWidget *widget)
 {
 	return (m_pTaskbarList && widget) ?
-		m_pTaskbarList->SetActiveAlt(widget->winId()) : E_NOTIMPL;
+        m_pTaskbarList->SetActiveAlt(hwndOfWidget(widget)) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::registerTab(QWidget *tab, QWidget *mainWindow)
 {
 	return (m_pTaskbarList && tab && mainWindow) ?
-		m_pTaskbarList->RegisterTab(tab->winId(), mainWindow->winId()) : E_NOTIMPL;
+        m_pTaskbarList->RegisterTab(hwndOfWidget(tab), hwndOfWidget(mainWindow)) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::unregisterTab(QWidget *tab)
 {
 	return (m_pTaskbarList && tab) ?
-		m_pTaskbarList->UnregisterTab(tab->winId()) : E_NOTIMPL;
+        m_pTaskbarList->UnregisterTab(hwndOfWidget(tab)) : E_NOTIMPL;
 }
 
 HRESULT QTaskbarList3::setTabOrder(QWidget *tab, QWidget *insertBefore)
 {
 	return (m_pTaskbarList && tab && insertBefore) ?
-		m_pTaskbarList->SetTabOrder(tab->winId(), insertBefore->winId()) : E_NOTIMPL;
+        m_pTaskbarList->SetTabOrder(hwndOfWidget(tab), hwndOfWidget(insertBefore)) : E_NOTIMPL;
 }
