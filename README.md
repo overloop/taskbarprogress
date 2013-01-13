@@ -1,0 +1,1 @@
+I heard you like bars and Qt, so I put QProgressBar in your taskbar, so you can progress while you progress while you Windows 7.
