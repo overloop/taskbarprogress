@@ -26,7 +26,6 @@
 #define QTASKBARLIST3_H
 
 #include <QWidget>
-//#include <shobjidl.h>
 #include "win32_taskbarlist.h"
 
 #ifndef HRESULT

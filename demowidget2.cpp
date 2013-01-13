@@ -59,12 +59,10 @@ void DemoWidget2::on_pause_clicked()
 {
 	timer->stop();
     ui->progressBar->taskbarProgress()->setState(TBPF_PAUSED);
-    ui->progressBar->setRange(0, 100);
 }
 
 void DemoWidget2::on_error_clicked()
 {
 	timer->stop();
     ui->progressBar->taskbarProgress()->setState(TBPF_ERROR);
-    //ui->progressBar->setRange(0, 100);
 }
